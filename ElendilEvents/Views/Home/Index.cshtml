@@ -1,0 +1,18 @@
+﻿@model System.Collections.Generic.List<ElendilEvents.Models.EventInstance>
+
+<html>
+<head></head>
+    <body>
+        <div id="listOfEvents">
+            <h1> List of events </h1>
+            @foreach(var eventInstance in Model)
+            {
+                <label>Event: </label> @eventInstance.Name <text>&nbsp; </text>
+                <label>Where: </label> @eventInstance.Where <text>&nbsp; </text>
+                <label>When: </label> @eventInstance.When <text>&nbsp; </text>
+                <br />
+                
+            }
+        </div>
+    </body>
+</html>
