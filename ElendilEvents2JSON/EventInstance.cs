@@ -11,7 +11,6 @@ namespace ElendilEvents2JSON
     {
         public String When { get; set; }
         public String Cost { get; set; }
-        public String errorMessage { get; set; }
         
     }
 }

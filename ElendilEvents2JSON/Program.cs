@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO; 
+using System.IO;
+using System.Web.Script.Serialization; 
 
 namespace ElendilEvents2JSON
 {
@@ -11,16 +12,23 @@ namespace ElendilEvents2JSON
         private static string currentIndent; 
         static void Main(String[] args)
         {
+            //read the file 
             List<int> unreadable;
-            Dictionary<string, Event> events = readFile(@".\SourceData.csv", out unreadable);
+            List<Event> events = readFile(@".\SourceData.csv", out unreadable);
+
+            //write the file using our own JSON writer. Outputs a nicely formatted file and a warning, but if you have to change the data structure, it will have to be changed as well. 
             string outputText;
-
-            outputText = JSONCreator(events, unreadable); 
-
+            outputText = JSONCreator(events, unreadable);
             File.WriteAllText(@".\output.txt", outputText);
+
+            //write the file using the normal JSON serializer. Will output just everything as a single line. If the data structure is changed, it will output in the new structure. 
+            string autoOutput;
+            JavaScriptSerializer serializer = new JavaScriptSerializer();
+            autoOutput = serializer.Serialize(events); 
+            File.WriteAllText(@".\autoOutput.json", autoOutput); 
         }
 
-        public static Dictionary<string, Event> readFile(string path, out List<int> unreadableLines)
+        public static List<Event> readFile(string path, out List<int> unreadableLines)
         {
             //get the contents out of the file
             var lines = System.IO.File.ReadLines(path);
@@ -30,7 +38,7 @@ namespace ElendilEvents2JSON
                 .ToArray();
 
             //will hold all events with the event name as key and an Event object as value
-            Dictionary<string, Event> events = new Dictionary<string, Event>();
+            List<Event> events = new List<Event>();
             //will hold the numbers of all lines which were OK
             List<int> unreadable = new List<int>();
 
@@ -45,31 +53,32 @@ namespace ElendilEvents2JSON
 
                     Event currentEvent;
                     //if we haven't yet created the event, create it now and add it to the dictionary 
-                    if (!events.ContainsKey(eventName))
+                    if (!events.Select(ev => ev.Name).Contains(eventName))
                     {
                         currentEvent = new Event { Name = eventName };
                         //the venues of the new event are still empty
-                        currentEvent.venues = new Dictionary<string, EventInVenue>();
-                        events.Add(currentEvent.Name, currentEvent);
+                        currentEvent.venues = new List<EventInVenue>();
+                        events.Add(currentEvent);
                     }
-                    else currentEvent = events[eventName];
+                    else currentEvent = events.Where(ev => ev.Name == eventName).Single();
 
                     // the same as above: we have the event now, if the current venue isn't yet on its list, enter it, else use the old one
                     string venueName = line[1];
                     EventInVenue currentVenue;
-                    if (!currentEvent.venues.ContainsKey(venueName))
+                    if (!currentEvent.venues.Select(ven => ven.VenueName).Contains(venueName))
                     {
                         currentVenue = new EventInVenue { VenueName = venueName };
                         currentVenue.Dates = new List<EventInstance>();
-                        currentEvent.venues.Add(venueName, currentVenue);
+                        currentEvent.venues.Add(currentVenue);
                     }
+                    else currentVenue = currentEvent.venues.Where(ven => ven.VenueName == venueName).Single(); 
 
                     string date = line[2];
                     string cost = line[3];
 
                     //the event instances within the venue are a simple list, not a dictionary. We just create one and add it to the list. 
                     EventInstance currentEventInstance = new EventInstance { When = date, Cost = cost };
-                    currentEvent.venues[venueName].Dates.Add(currentEventInstance);
+                    currentVenue.Dates.Add(currentEventInstance);
                 }
                 else
                     //if the line was too short
@@ -80,7 +89,7 @@ namespace ElendilEvents2JSON
             return events;
         }
 
-        public static string JSONCreator(Dictionary<string, Event> events, List<int> unreadable)
+        public static string JSONCreator(List<Event> events, List<int> unreadable)
         {
             currentIndent = "";
             // this representation of a quote a bit ugly to have everywhere, so we will give it a short name
@@ -91,13 +100,13 @@ namespace ElendilEvents2JSON
             //The buildLine method below creates a nicely formatted line out of a list of strings
             JSON.Append(buildLine(new List<string> { "[" }));
 
-            foreach(Event currentEvent in events.Values)
+            foreach(Event currentEvent in events)
             {
                 JSON.Append(buildLine(new List<string> { "{" }));
                 JSON.Append(buildLine(new List<string> { q, "name", q, ": ", q, currentEvent.Name, q }));
                 JSON.Append(buildLine(new List<string> {q, "venues", q, ": [" })); 
 
-                foreach(EventInVenue currentVenue in currentEvent.venues.Values)
+                foreach(EventInVenue currentVenue in currentEvent.venues)
                 {
                 JSON.Append(buildLine(new List<string> { "{" }));
                 JSON.Append(buildLine(new List<string> {q, "venue", q, ": ", q, currentVenue.VenueName, q }));
