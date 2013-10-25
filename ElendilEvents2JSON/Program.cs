@@ -15,7 +15,7 @@ namespace ElendilEvents2JSON
             Dictionary<string, Event> events = readFile(@".\SourceData.csv", out unreadable);
             string outputText;
 
-            outputText = JSONCreator(events); 
+            outputText = JSONCreator(events, unreadable); 
 
             File.WriteAllText(@".\output.txt", outputText);
         }
@@ -80,7 +80,7 @@ namespace ElendilEvents2JSON
             return events;
         }
 
-        public static string JSONCreator(Dictionary<string, Event> events)
+        public static string JSONCreator(Dictionary<string, Event> events, List<int> unreadable)
         {
             currentIndent = "";
             // this representation of a quote a bit ugly to have everywhere, so we will give it a short name
@@ -109,40 +109,70 @@ namespace ElendilEvents2JSON
                         JSON.Append(buildLine(new List<string> { q, "price", q, ": ", q, currentDate.Cost, q }));
                         JSON.Append(buildLine(new List<string> { "}, " }));
                     }
+                    // we append a comma after the last element, so when the collection is over, we want to remove the last comma
                     JSON.Remove(JSON.Length - 4, 4);
+                    JSON.Append(System.Environment.NewLine); 
                     JSON.Append(buildLine(new List<string> { "]" }));
                     JSON.Append(buildLine(new List<string> { "}, " }));
                 }
                 JSON.Remove(JSON.Length - 4, 4);
+                JSON.Append(System.Environment.NewLine); 
                 JSON.Append(buildLine(new List<string> { "]" }));
                 JSON.Append(buildLine(new List<string> { "}, " }));
 
             }
             JSON.Remove(JSON.Length - 4, 4);
+            JSON.Append(System.Environment.NewLine); 
+            JSON.Append(buildLine(new List<string> { "]" }));
+
+            //warn that we couldn't read some lines
+            if (unreadable.Count > 0)
+                JSON.AppendLine("Warning! Could not read lines numbers:" + string.Join(",", unreadable)); 
 
             return JSON.ToString();  
 
         }
-
+        
+        //works on the static variable holding the indent
         public static void increaseIndent()
         {
             currentIndent = currentIndent + "  "; 
         }
 
+        //works on the static variable holding the indent
         public static void decreaseIndent()
         {
+            if(currentIndent.Length >=2)
             currentIndent = currentIndent.Substring(0, currentIndent.Length - 2); 
         }
 
+        /// <summary>
+        /// create a line with the correct indent and the pieces passed in. It doesn't add spaces between pieces, all pieces must contain their own spaces as needed
+        /// </summary>
+        /// <param name="contentsList"></param>
+        /// <returns></returns>
         public static string buildLine(List<string> contentsList)
         {
+            //so we can refer to them by index
             string[] contents = contentsList.ToArray(); 
+
+            //will hold our line
             StringBuilder line = new StringBuilder();
-            if (contents[0] == "}" || contents[0] == "]") decreaseIndent(); 
+
+            //we want to have less indentation after closing brackets
+            if (contents[0].StartsWith("}") || contents[0].StartsWith("]")) decreaseIndent(); 
+
+            //start with the indentation
             line.Append(currentIndent);
+
+            // append each piece 
             foreach (string piece in contents) line.Append(piece);
+
+            //add a newline 
             line.Append(System.Environment.NewLine);
-            if (contents[contents.Length-1] == "{" || contents[contents.Length-1] == "[") increaseIndent();
+            
+            //if we just opened a bracket, we want more indent in the next line
+            if (contents[contents.Length-1].EndsWith("{") || contents[contents.Length-1].EndsWith("[")) increaseIndent();
 
             return line.ToString(); 
         }
