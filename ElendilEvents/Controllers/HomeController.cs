@@ -1,10 +1,12 @@
-﻿using System;
+﻿
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.IO;
-using ElendilEvents.Models; 
+using ElendilEvents.Models;
 
 namespace ElendilEvents.Controllers
 {
@@ -13,19 +15,24 @@ namespace ElendilEvents.Controllers
         // displays all events
         public ActionResult Index()
         {
-            List<EventInstance> eventInstances = readFile();
-            return View("Index", eventInstances);
+            List<int> unreadableLines;
+            string unreadable; 
+            string path = @"~/App_Data/SourceData.csv"; 
+            Dictionary<string, Event> eventInstances = readFile(path, out unreadableLines);
+            if (unreadableLines.Count > 0)
+                unreadable = String.Join(", ", unreadableLines);
+            else unreadable = ""; 
+            ViewBag.Unreadable = unreadable; 
+            return View("Index", eventInstances.Values.ToList());
         }
 
         /// <summary>
-        /// Reads the data from the csv file and returns it as prepared objects. 
-        /// It expects the data to be available in the format 
-        /// Event name; Event location; Date 
-        /// Always one per line
+        /// This will read a csv file where each line is formatted as: event name; event venue; date; cost
+        /// It is possible to add comments after the cost
         /// </summary>
-        /// <param name="path">The path where the file with the events is</param>
+        /// <param name="path"></param>
         /// <returns></returns>
-        public List<EventInstance> readFile(string path = @"~/App_Data/SourceData.csv")
+        public Dictionary<string, Event> readFile(string path, out List<int> unreadableLines)
         {
             //get the contents out of the file
             var lines = System.IO.File.ReadLines(Server.MapPath(path));
@@ -34,41 +41,57 @@ namespace ElendilEvents.Controllers
                 .Select(line => line.Split(';'))
                 .ToArray();
 
-            //an empty list to hold our objects
-            List<EventInstance> eventInstances = new List<EventInstance>(); 
+            //will hold all events with the event name as key and an Event object as value
+            Dictionary<string, Event> events = new Dictionary<string, Event>();
+            //will hold the numbers of all lines which were OK
+            List<int> unreadable = new List<int>(); 
 
-            //This loop reads each line once
-            for (int lineCounter = 0; lineCounter < csv.Length; lineCounter++ )
+            //read each line, if you want to skip header lines, change the zero
+            for (int lineCounter = 0; lineCounter < csv.Length; lineCounter++)
             {
-                //an empty object which we will fill with info from the line
-                EventInstance evInstance = new EventInstance();
+                string[] line= csv[lineCounter]; 
 
-                //check that we have at least 3 segments, else write an error instead of name
-                if (csv[lineCounter].Length >= 3)
+                if (line.Length >= 4)
                 {
-                    // csv is an array of arrays of strings. To get a single string, we need to use to indices. 
-                    //The first index gives us the current line, the second gives us the position of the string within the line. Arrays in C# are zero-based, so csv[lineCounter][2] gives us the third piece of the current line. 
-                    string timeAsString = csv[lineCounter][2];
-                    // an empty date object into which we will read the time from the csv
-                    DateTime timeAsDate;
-                    //TryParse is a method which returns true if it was successful. It reads the string written as a first argument, and writes the result into the variable named as second argument (after the keyword out). 
-                    // if there is something wrong with the date in the file, we will write this info into the name column. 
-                    if (DateTime.TryParse(timeAsString, out timeAsDate))
-                    {
-                        //The object evInstance has four fields. We fill the three we could read, and leave the errorMessage empty. 
-                        evInstance.When = timeAsDate;
-                        evInstance.Where = csv[lineCounter][1];
-                        evInstance.Name = csv[lineCounter][0];
-                        evInstance.errorMessage = ""; 
-                    }
-                    else evInstance.errorMessage = String.Format("Could not read date in row {0}", lineCounter + 1);
-                }
-                else evInstance.errorMessage = String.Format("Row {0} is not available in the expected format", lineCounter + 1); 
+                    string eventName = line[0];
 
-                // This line adds the event instance we just created to the list of all event instances 
-                eventInstances.Add(evInstance); 
+                    Event currentEvent;
+                    //if we haven't yet created the event, create it now and add it to the dictionary 
+                    if (!events.ContainsKey(eventName))
+                    {
+                        currentEvent = new Event { Name = eventName };
+                        //the venues of the new event are still empty
+                        currentEvent.venues = new Dictionary<string, EventInVenue>();
+                        events.Add(currentEvent.Name, currentEvent);
+                    }
+                    else currentEvent = events[eventName];
+
+                    // the same as above: we have the event now, if the current venue isn't yet on its list, enter it, else use the old one
+                    string venueName = line[1];
+                    EventInVenue currentVenue;
+                    if (!currentEvent.venues.ContainsKey(venueName))
+                    {
+                        currentVenue = new EventInVenue { VenueName = venueName };
+                        currentVenue.Dates = new List<EventInstance>();
+                        currentEvent.venues.Add(venueName, currentVenue);
+                    }
+
+                    string date = line[2];
+                    string cost = line[3];
+
+                    //the event instances within the venue are a simple list, not a dictionary. We just create one and add it to the list. 
+                    EventInstance currentEventInstance = new EventInstance { When = date, Cost = cost };
+                    currentEvent.venues[venueName].Dates.Add(currentEventInstance);
+                }
+                else
+                    //if the line was too short
+                    unreadable.Add(lineCounter + 1); 
+
             }
-            return eventInstances; 
+            unreadableLines = unreadable; 
+            return events; 
         }
+        
     }
 }
+

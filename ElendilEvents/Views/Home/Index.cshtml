@@ -1,22 +1,33 @@
-﻿@model System.Collections.Generic.List<ElendilEvents.Models.EventInstance>
+﻿@model System.Collections.Generic.IEnumerable<ElendilEvents.Models.Event>
 
 <html>
 <head></head>
     <body>
         <div id="listOfEvents">
             <h1> List of events </h1>
-            @foreach(var eventInstance in Model)
+            @if(ViewBag.Unreadable != "")
             {
-                if (eventInstance.errorMessage == "") { 
-                <label>Event: </label> @eventInstance.Name <text>&nbsp; </text>
-                <label>Where: </label> @eventInstance.Where <text>&nbsp; </text>
-                <label>When: </label> @String.Format("{0:ddd, d. MMMM, yyyy}", eventInstance.When) <text> &nbsp; </text>
+                <text> Warning! Could not read line numbers: @ViewBag.Unreadable from the csv source. </text>
             }
-            else
-                { <label>Error: </label> @eventInstance.errorMessage }
+
+            @foreach (var currentEvent in Model)
+            {
+                <h2>@currentEvent.Name </h2>
+                foreach(var currentVenue in currentEvent.venues.Values)
+                {
+                    <h3>@currentVenue.VenueName</h3>
+                    foreach(var currentDate in currentVenue.Dates)
+                    {
+                        <p> @currentDate.When, for @currentDate.Cost </p>
+                    }
+                    <br />
+                }
                 <br />
-                
+
             }
+
+
+
         </div>
     </body>
 </html>
