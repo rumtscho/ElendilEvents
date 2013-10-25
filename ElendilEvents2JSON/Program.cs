@@ -83,10 +83,13 @@ namespace ElendilEvents2JSON
         public static string JSONCreator(Dictionary<string, Event> events)
         {
             currentIndent = "";
+            // this representation of a quote a bit ugly to have everywhere, so we will give it a short name
             string q = '"'.ToString(); 
+            // A StringBuilder is practically the same thing as a string, only it can have other strings attached to its end very efficiently
             StringBuilder JSON = new StringBuilder();
 
-            JSON.Append(buildLine(new List<string> { "[" })); 
+            //The buildLine method below creates a nicely formatted line out of a list of strings
+            JSON.Append(buildLine(new List<string> { "[" }));
 
             foreach(Event currentEvent in events.Values)
             {
@@ -106,16 +109,16 @@ namespace ElendilEvents2JSON
                         JSON.Append(buildLine(new List<string> { q, "price", q, ": ", q, currentDate.Cost, q }));
                         JSON.Append(buildLine(new List<string> { "}, " }));
                     }
-                    JSON.Remove(JSON.Length - 2, 2);
+                    JSON.Remove(JSON.Length - 4, 4);
                     JSON.Append(buildLine(new List<string> { "]" }));
                     JSON.Append(buildLine(new List<string> { "}, " }));
                 }
-                JSON.Remove(JSON.Length - 2, 2);
+                JSON.Remove(JSON.Length - 4, 4);
                 JSON.Append(buildLine(new List<string> { "]" }));
                 JSON.Append(buildLine(new List<string> { "}, " }));
 
             }
-            JSON.Remove(JSON.Length - 2, 2);
+            JSON.Remove(JSON.Length - 4, 4);
 
             return JSON.ToString();  
 
