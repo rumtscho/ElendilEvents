@@ -7,9 +7,13 @@
             <h1> List of events </h1>
             @foreach(var eventInstance in Model)
             {
+                if (eventInstance.errorMessage == "") { 
                 <label>Event: </label> @eventInstance.Name <text>&nbsp; </text>
                 <label>Where: </label> @eventInstance.Where <text>&nbsp; </text>
-                <label>When: </label> @eventInstance.When <text>&nbsp; </text>
+                <label>When: </label> @String.Format("{0:ddd, d. MMMM, yyyy}", eventInstance.When) <text> &nbsp; </text>
+            }
+            else
+                { <label>Error: </label> @eventInstance.errorMessage }
                 <br />
                 
             }
